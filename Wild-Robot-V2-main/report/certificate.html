@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Pinyon+Script&family=Open+Sans:wght@400;600&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #eee;
+            font-family: 'Open Sans', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Certificate Container (A4 Landscape) */
+        .cert-container {
+            width: 1123px;
+            height: 794px;
+            /* A4 Landscape approx pixels at 96dpi */
+            background: white;
+            position: relative;
+            padding: 40px;
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border: 20px solid #fff;
+            outline: 5px double #D4AF37;
+            /* Gold Border */
+            background-image: radial-gradient(circle at center, #fff 50%, #fcfbf0 100%);
+        }
+
+        /* Decorative Corners */
+        .corner {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 5px double #D4AF37;
+        }
+
+        .tl {
+            top: 20px;
+            left: 20px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .tr {
+            top: 20px;
+            right: 20px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .bl {
+            bottom: 20px;
+            left: 20px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .br {
+            bottom: 20px;
+            right: 20px;
+            border-left: none;
+            border-top: none;
+        }
+
+        /* Content */
+        .logo {
+            width: 80px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 56px;
+            color: #1f2937;
+            margin: 10px 0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        h3 {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 18px;
+            color: #D4AF37;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 0;
+        }
+
+        .present-text {
+            font-size: 18px;
+            color: #666;
+            margin: 30px 0 10px;
+            font-style: italic;
+        }
+
+        .player-name {
+            font-family: 'Pinyon Script', cursive;
+            font-size: 80px;
+            color: #10b981;
+            /* Wild Robot Green */
+            margin: 10px 0;
+            padding: 0 40px;
+            border-bottom: 2px solid #eee;
+            display: inline-block;
+        }
+
+        .body-text {
+            font-size: 20px;
+            line-height: 1.8;
+            color: #444;
+            max-width: 80%;
+            margin: 30px auto;
+        }
+
+        .level-badge {
+            color: #D4AF37;
+            font-weight: bold;
+            font-family: 'Cinzel', serif;
+        }
+
+        .footer-row {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            margin-top: 60px;
+        }
+
+        .sign-box {
+            text-align: center;
+            border-top: 2px solid #333;
+            padding-top: 10px;
+            width: 250px;
+        }
+
+        .sign-title {
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+            color: #333;
+        }
+
+        .date-badge {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: #888;
+        }
+
+        /* Print/PDF Settings */
+        .no-print {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            background: #1f2937;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            background: #000;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .cert-container {
+                box-shadow: none;
+                width: 100%;
+                height: 100vh;
+                margin: 0;
+                border: none;
+                outline: 5px double #D4AF37;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            @page {
+                size: landscape;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="wrapper" class="cert-container">
+        <div style="font-size:30px; color:#ccc;">⏳ Generating Certificate...</div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://gkyhmhevfraeufbdlspx.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreWhtaGV2ZnJhZXVmYmRsc3B4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODczNDEsImV4cCI6MjA4MDI2MzM0MX0.ZcrU8OeWyHh4epLZDODJ8jbd2RykhBWJXyXypRlQAbk";
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const LEVELS = ["Recreational", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Sapphire"];
+
+        async function init() {
+            const id = new URLSearchParams(window.location.search).get('id');
+            if (!id) return;
+
+            const { data: ev, error } = await supabase.from('evaluations').select('*, players(name, branch)').eq('id', id).single();
+
+            if (ev) render(ev);
+        }
+
+        function render(d) {
+            // Logic to find Previous Level
+            const currentLvl = d.level_status;
+            const idx = LEVELS.indexOf(currentLvl);
+            // If index is 0 or not found, say "Beginner Program"
+            const prevLvl = (idx > 0) ? LEVELS[idx - 1] : "Foundation Program";
+
+            const dateStr = new Date(d.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+            document.getElementById('wrapper').innerHTML = `
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
+
+        <img src="../assets/logos/Robot-Head.png" class="logo" alt="Logo">
+        <h3>Wild Robot Academy</h3>
+        <h1>Certificate</h1>
+        <h3>Of Achievement</h3>
+
+        <div class="present-text">This certificate is proudly presented to</div>
+        <div class="player-name">${d.player_name}</div>
+
+        <div class="body-text">
+          For successfully completing the requirements of the <span class="level-badge">${prevLvl}</span> level,<br>
+          and officially advancing to <span class="level-badge" style="color:#10b981; font-size:1.2em;">${currentLvl}</span>.
+        </div>
+
+        <div class="footer-row">
+          <div class="sign-box">
+            <div style="font-family: 'Pinyon Script', cursive; font-size: 30px;">Head Coach</div>
+            <div class="sign-title">Signature</div>
+          </div>
+          <div class="sign-box">
+            <div style="font-family: 'Cinzel', serif; font-size: 20px;">${d.branch_name}</div>
+            <div class="sign-title">Branch</div>
+          </div>
+        </div>
+
+        <div class="date-badge">${dateStr}</div>
+
+        <div class="no-print">
+           <button class="btn" onclick="downloadPDF('${d.player_name}')">🖨️ Print / Save PDF</button>
+        </div>
+      `;
+        }
+
+        window.downloadPDF = function (name) {
+            // Set title for cleaner save
+            document.title = name + "_Certificate";
+            window.print();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

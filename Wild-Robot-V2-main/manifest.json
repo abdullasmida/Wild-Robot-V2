@@ -1,0 +1,16 @@
+{
+    "name": "Wild Robot",
+    "short_name": "Wild Robot",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#f0fdf4",
+    "theme_color": "#10b981",
+    "icons": [
+        {
+            "src": "./assets/logos/Robot-Head.png",
+            "sizes": "192x192 512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

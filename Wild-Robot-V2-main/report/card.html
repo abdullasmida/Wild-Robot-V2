@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Report Card</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* === Print-Friendly CSS === */
+        :root {
+            --primary: #10b981;
+            --primary-dark: #047857;
+            --bg: #eef2f6;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 20px;
+            /* Allow scrolling for long reports */
+            min-height: 100vh;
+            display: block;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            /* CRITICAL FIX FOR PDF: No overflow hidden */
+            overflow: visible;
+            position: relative;
+        }
+
+        /* Header */
+        .hero-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 40px 20px 70px;
+            text-align: center;
+            color: white;
+            border-radius: 20px 20px 0 0;
+            -webkit-print-color-adjust: exact;
+            /* Force print colors */
+        }
+
+        .player-name {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .meta-row {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .meta-badge {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Score Float */
+        .score-float {
+            background: white;
+            color: var(--primary-dark);
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            font-weight: 900;
+            font-size: 26px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            border: 5px solid #ecfdf5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 140px;
+            z-index: 10;
+        }
+
+        .score-float span {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+            margin-top: -2px;
+        }
+
+        /* Content */
+        .body-content {
+            padding: 60px 40px 40px;
+        }
+
+        .coach-msg {
+            background: #f8fafc;
+            border-left: 5px solid var(--primary);
+            padding: 20px;
+            border-radius: 12px;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        /* Grid - PDF Safe */
+        .apparatus-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            /* 2 Columns */
+            gap: 20px;
+        }
+
+        /* Make grid stack on mobile but stay 2-col on PDF/Desktop */
+        @media (max-width: 600px) {
+            .apparatus-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .apparatus-card {
+            border: 1px solid #eee;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #fff;
+            /* Prevent PDF from cutting a card in half */
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .app-header {
+            background: #f9fafb;
+            padding: 12px 15px;
+            font-weight: 800;
+            color: #374151;
+            border-bottom: 1px solid #eee;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .skill-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px dashed #f0f0f0;
+            font-size: 14px;
+        }
+
+        .stars {
+            color: #f59e0b;
+            letter-spacing: 2px;
+            font-family: sans-serif;
+        }
+
+        .dl-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: #1f2937;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+
+        /* Error UI */
+        .error-box {
+            color: red;
+            background: #fee;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="wrapper">
+        <div style="text-align:center; padding-top:100px; color:#aaa;">
+            <h2>⏳ fetching report...</h2>
+        </div>
+    </div>
+
+    <script>
+        // Config
+        const SUPABASE_URL = "https://gkyhmhevfraeufbdlspx.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdreWhtaGV2ZnJhZXVmYmRsc3B4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2ODczNDEsImV4cCI6MjA4MDI2MzM0MX0.ZcrU8OeWyHh4epLZDODJ8jbd2RykhBWJXyXypRlQAbk";
+
+        async function init() {
+            try {
+                if (typeof supabase === 'undefined') throw new Error("Libs not loaded.");
+                const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                const id = new URLSearchParams(window.location.search).get('id');
+                if (!id) throw new Error("No ID provided.");
+
+                // FETCH: Get Evaluation AND joined Player Data to get the Real Level
+                const { data: ev, error } = await client
+                    .from('evaluations')
+                    .select('*, players(name, level, branch, age)')
+                    .eq('id', id)
+                    .single();
+
+                if (error || !ev) throw new Error("Report not found.");
+
+                render(ev);
+
+            } catch (err) {
+                document.getElementById('wrapper').innerHTML = `<div class="error-box"><h3>Error</h3><p>${err.message}</p></div>`;
+            }
+        }
+
+        function render(d) {
+            const stars = n => "★".repeat(Math.round(n || 0)) + "☆".repeat(5 - Math.round(n || 0));
+            const skills = d.skill_details || d.skills_snapshot || [];
+
+            // PREFER PLAYER DATA (Real Level) OVER EVALUATION SNAPSHOT
+            const realLevel = d.players?.level || d.level_status || "Bronze";
+            const realBranch = d.players?.branch || d.branch_name || "";
+            const realAge = d.players?.age ? `${d.players.age} Yrs` : "";
+
+            let gridHtml = "";
+            if (Array.isArray(skills)) {
+                skills.forEach(dev => {
+                    if (!dev.skills || !dev.skills.length) return;
+                    let rows = dev.skills.map(s => `
+             <div class="skill-row">
+               <span style="color:#555;">${s.name}</span>
+               <span class="stars">${s.rating > 0 ? stars(s.rating) : '<span style="color:#ccc;font-size:12px;">—</span>'}</span>
+             </div>
+           `).join('');
+
+                    gridHtml += `
+             <div class="apparatus-card">
+               <div class="app-header">${dev.name}</div>
+               <div>${rows}</div>
+             </div>
+           `;
+                });
+            }
+
+            document.getElementById('wrapper').innerHTML = `
+        <div id="pdfContent" class="main-container">
+          <div class="hero-header">
+            <h1 class="player-name">${d.player_name}</h1>
+            <div class="meta-row">
+              <span class="meta-badge">${realBranch}</span>
+              ${realAge ? `<span class="meta-badge">${realAge}</span>` : ''}
+              <span class="meta-badge" style="background:rgba(255,255,255,0.4); border-color:#fff;">${realLevel}</span>
+            </div>
+          </div>
+
+          <div class="score-float">
+            ${Math.round(d.percentage)}% <span>Score</span>
+          </div>
+          
+          <div class="body-content">
+            <div class="coach-msg">
+              "${d.auto_note || d.auto_notes || "Excellent effort!"}"
+              ${d.coach_notes ? `<br><br><small><b>Note:</b> ${d.coach_notes}</small>` : ''}
+            </div>
+
+            <div class="apparatus-grid">
+              ${gridHtml}
+            </div>
+          </div>
+        </div>
+
+        <div style="max-width:800px; margin:0 auto; text-align:center;">
+           <button class="dl-btn" onclick="downloadPdf()">Download PDF Report</button>
+        </div>
+      `;
+        }
+
+        window.downloadPdf = function () {
+            const element = document.getElementById('pdfContent');
+            // Configuration to fix Cut-off issues
+            const opt = {
+                margin: [10, 10, 10, 10], // Top, Left, Bottom, Right
+                filename: 'Report_Card.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                // Smart Page Breaks
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+            html2pdf().from(element).set(opt).save();
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
